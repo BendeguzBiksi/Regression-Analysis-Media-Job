@@ -1,0 +1,696 @@
+########################################################################################################
+##### The Goals of this code
+##### The first goal is to analyse and explore the dataset, that I have created from various data sources.
+##### The second goal is to build OLS models to best explain the effects of media/advertisement spending on the sales volume of brand1 of abc corp.
+##### 01/05/2020 Budapest, Hungary
+########################################################################################################
+############################################# CODE STARTS HERE #########################################
+########################################################################################################
+
+
+##### Load the necessary libraries
+
+library(dplyr)
+library(tidyselect)
+library(readxl)
+library(skimr)
+library(DataExplorer)
+library(ggridges)
+library(ggplot2)
+library(latticeExtra)
+library(lattice)
+library(ggcorrplot)
+library(corrplot)
+library(GGally)
+
+
+##### Read the datasets from excel
+
+abc_corp_data <- read_excel("abc_corp_data.xlsx")
+
+abc_corp_data_adstock <- read_excel("abc_corp_data_adstock.xlsx")
+
+
+##### View the data
+
+View(abc_corp_data)
+
+
+##### Skim the data
+
+skim(abc_corp_data)
+
+
+##### Define new variables
+
+tdp_data <- abc_corp_data %>% select(starts_with("tdp"))
+
+tdp_data$week_id <- abc_corp_data$week_id
+
+tdp_data$date <- abc_corp_data$date_start_week
+
+easter <- abc_corp_data$easter
+
+xmas <- abc_corp_data$xmas
+
+tv_grp_brand1margarinetub <- abc_corp_data$tv_grp_brand1margarinetub
+
+tv_grp_brand1margarinewrapper <- abc_corp_data$tv_grp_brand1margarinewrapper
+
+sv_brand1margarinetub <- abc_corp_data$sv_brand1margarinetub
+
+sv_brand1margarinewrapper <- abc_corp_data$sv_brand1margarinewrapper
+
+date <- abc_corp_data$date_start_week
+
+tv_sv_rmt <- data.frame(tv_grp_brand1margarinetub, sv_brand1margarinetub, date)
+
+tv_sv_rmt$sales_volumebrand1margarinetub <- abc_corp_data$salesvolume_brand1margarinetub
+
+
+
+#################################################
+##### Visually analyse and explore the data #####
+#################################################
+
+
+##### Construct separate plots for each series
+
+obj11 <- xyplot(sv_brand1margarinetub ~ date, tv_sv_rmt, type = "l" , lwd=2)
+obj12 <- xyplot(tv_grp_brand1margarinetub ~ date, tv_sv_rmt, type = "l", lwd=2)
+
+
+##### Make the plot with second y axis and legend:
+
+doubleYScale(obj11, obj12, text = c("Sales Value", "TV GRP") , add.ylab2 = TRUE)
+
+
+##### Plot histograms of the data
+
+plot_histogram(abc_corp_data)
+
+
+hist(tv_sv_rmt$sv_brand1margarinetub)
+
+ggplot(data = tv_sv_rmt, aes(x=sv_brand1margarinetub)) +
+  geom_density(fill="#69b3a2", color="#e9ecef", alpha=0.8)
+
+
+hist(tv_sv_rmt$sv_brand1margarinetub)
+
+ggplot(data = tv_sv_rmt, aes(x=sv_brand1margarinetub)) +
+  geom_density(fill="#69b3a2", color="#e9ecef", alpha=0.8)
+
+
+##### Plot density plots of the data
+
+plot(density(tv_grp_brand1margarinetub))
+
+plot(density(sv_brand1margarinetub))
+
+plot(density(sv_brand1margarinewrapper))
+
+
+ggplot(data = tdp_data, aes(x=tdp_brand1margarinetub)) +
+  geom_density(fill="#69b3a2", color="#e9ecef", alpha=0.8)
+
+
+
+ggplot(data = melt (tdp_data), aes(x = value)) + 
+  geom_density(fill="#69b3a2", color="#e9ecef", alpha=0.8) + 
+  facet_wrap(~variable, scales = "free")
+
+
+ggplot(tdp_data, aes(x=~value, fill=~variable)) + stat_density() + geom_density()
+
+
+##### Plot line plots of the data
+
+##### Single
+
+ggplot(data = abc_corp_data, aes(x = week_id, y = sv_brand1margarinetub))+
+  geom_line(color = "red", size = 2)
+
+
+##### Multiple
+require(ggplot2)
+require(reshape2)
+
+
+dfm <- melt(tdp_data, id.vars = 'week_id')
+ggplot(dfm, aes(x = week_id, y = value, color = variable)) +
+  geom_line()
+
+
+rm(dfm2)
+dfm2 <- subset(tdp_data, select = -c(tdp_butter, week_id))
+dfm3 <- melt(dfm2, id.vars = 'date')
+
+
+ggplot(dfm3, aes(x = date, y = value, color = variable)) +
+  geom_line()
+
+
+scatter.smooth(x=tv_grp_brand1margarinetub, y=sv_brand1margarinetub) 
+
+scatter.smooth(x=tv_grp_brand1margarinewrapper, y=sv_brand1margarinewrapper) 
+
+
+##### Plot box plots of the data
+
+
+boxplot(sv_brand1margarinetub)
+
+boxplot(tv_grp_brand1margarinetub)
+
+boxplot(sv_brand1margarinewrapper)
+
+boxplot(tv_grp_brand1margarinewrapper)
+
+
+##### Analyse correlation matrix
+
+corr_data <- abc_corp_data[c("tdp_brand2margarinetub",	"tdp_flobrand1rgarinetub",	"tdp_brand1margarinetub",	"tdp_brand1margarinewrapper",	"nonpromosalesvalue_brand2margarinetub",	"nonpromosalesvalue_flobrand1rgarinetub",	"nonpromosalesvalue_brand1margarinetub",	"nonpromosalesvalue_brand1margarinewrapper",	"nonpromosalesvolume_brand2margarinetub",	"nonpromosalesvolume_flobrand1rgarinetub",	"nonpromosalesvolume_brand1margarinetub",	"nonpromosalesvolume_brand1margarinewrapper",	"promosalesvalue_brand2margarinetub",	"promosalesvalue_flobrand1rgarinetub",	"promosalesvalue_brand1margarinetub",	"promosalesvalue_brand1margarinewrapper",	"promosalesvolume_brand2margarinetub",	"promosalesvolume_flobrand1rgarinetub",	"promosalesvolume_brand1margarinetub",	"promosalesvolume_brand1margarinewrapper",	"sv_brand2margarinetub",	"sv_flobrand1rgarinetub",	"sv_brand1margarinetub",	"sv_brand1margarinewrapper",	"as_brand1margarine",	"as_brand1margarinewrapper",	"as_brand1margarinetub",	"as_brand2internetmargarinetub",	"as_brand2magazinesmargarinetub",	"as_brand3internetmargarinetub",	"as_flobrand1gazinesmargarinetub",	"as_brand1dailiesmargarinewrapper",	"as_brand1internetmargarinetub",	"as_brand1internetmargarinewrapper",	"as_brand1magazinesmargarinetub",	"as_brand1magazinesmargarinewrapper",	"as_brand1radiomargarinewrapper",	"nonpromoprice_brand2margarinetub",	"nonpromoprice_flobrand1rgarinetub",	"nonpromoprice_brand1margarinetub",	"nonpromoprice_brand1margarinewrapper",	"promoprice_brand2margarinetub",	"promoprice_flobrand1rgarinetub",	"promoprice_brand1margarinetub",	"promoprice_brand1margarinewrapper",	"depthofdiscount_brand2margarinetub",	"depthofdiscount_flobrand1rgarinetub",	"depthofdiscount_brand1margarinetub",	"depthofdiscount_brand1margarinewrapper",	"tv_grp_brand1margarinewrapper",	"tv_grp_brand1margarinetub",	"tv_grp_flobrand1rgarinetub",	"salesvolume_brand2margarinetub",	"salesvolume_flobrand1rgarinetub",	"salesvolume_brand1margarinetub",	"salesvolume_brand1margarinewrapper",	"promointensity_brand2margarinetub",	"promointensity_flobrand1rgarinetub",	"promointensity_brand1margarinetub",	"promointensity_brand1margarinewrapper",	"temperature",	"brutto_atlagkereset_huf_fo_ho",	"liszt_priceindex",	"kenyer_priceindex")]
+
+
+ggcorr(corr_data, method = c("everything", "pearson")) 
+
+
+##### Analyse correlation matrix for TV data 
+
+corr_data_tv <- abc_corp_data %>% select(starts_with("tv"))
+
+corr_data_tv$sv_brand1margarinetub <- abc_corp_data$sv_brand1margarinetub
+
+corr_data_tv$salesvolume_brand1margarinetub <- abc_corp_data$salesvolume_brand1margarinetub
+
+corr_data_tv$as_brand1margarinetub <- abc_corp_data$as_brand1margarinetub
+
+corr_data_tv$as_brand1margarinewrapper <- abc_corp_data$as_brand1margarinewrapper
+
+ggcorr(corr_data_tv, method = c("everything", "pearson")) 
+
+
+##### Plot correlation matrix 
+
+corr_data_all <- abc_corp_data[c("nonpromosalesvalue_brand1margarinetub", "promosalesvalue_brand1margarinetub", "sv_brand1margarinetub","tdp_brand1margarinetub","tdp_brand1margarinewrapper", "nonpromoprice_brand1margarinetub","nonpromoprice_brand1margarinewrapper","promoprice_flobrand1rgarinetub","promoprice_brand1margarinetub","promoprice_brand1margarinewrapper","depthofdiscount_flobrand1rgarinetub","depthofdiscount_brand1margarinetub","depthofdiscount_brand1margarinewrapper","tv_grp_brand1margarinewrapper","tv_grp_brand1margarinetub","tv_grp_flobrand1rgarinetub","salesvolume_flobrand1rgarinetub","salesvolume_brand1margarinetub","salesvolume_brand1margarinewrapper","promointensity_brand1margarinetub","promointensity_brand1margarinewrapper","temperature","brutto_atlagkereset_huf_fo_ho","liszt_priceindex","kenyer_priceindex")]
+
+ggcorr(corr_data_all, method = c("everything", "pearson")) 
+
+
+
+M <- cor(corr_data_all)
+corrplot(M, method = "circle")
+corrplot(M, type = "lower")
+
+corrplot(M, type = "lower", order = "FPC")
+
+
+corrplot(M,  type = "lower", order = "FPC", method = "number")
+
+
+
+
+############################## First regressions starts here ##############################
+
+
+
+model_fintub <- lm(formula = salesvolume_brand1margarinetub ~ 
+                     
+#base
+                     
+                     week_id
+                   
+                   + brutto_atlagkereset_huf_fo_ho
+                   
+                   + kenyer_priceindex
+                   
+                   + liszt_priceindex
+                   
+#own price elasticity
+                   
+
+                   + base_price_brand1_tub
+                   
+#own distribution 
+                   
+                   +  tdp_brand1margarinetub
+                   
+#own media
+                   
+                   + as_tv_brand1tub_0_7
+                   
+                   + I(as_tv_brand1tub_0_7^2)
+                   
+                   + as_net_brand1tub_0_8
+                   
+                   + I(as_net_brand1tub_0_8^2)
+     
+
+#cannibalization/sinergy
+
+                   
+                   + base_price_brand1_wrapper
+                   
+                   + tdp_brand1margarinewrapper
+                   
+                   + promosalesvolume_brand1margarinewrapper
+                   
+                   
+                   + as_tv_brand1wrapper_0_65
+                   
+                   + I(as_tv_brand1wrapper_0_65^2)
+                   
+                   
+                   + as_brand1_wrapper_net_0_5
+                   
+                   + I(as_brand1_wrapper_net_0_5^2)
+                   
+                   
+                   + as_brand1_wrapper_mgz_0_55
+                   
+                   + I(as_brand1_wrapper_mgz_0_55^2)
+                 
+                   
+#competitors
+                   
+#compbrand1 tub 
+                   
+                   + base_price_compbrand1_tub
+                   
+                   + tdp_compbrand1margarinetub
+                   
+                   + promosalesvolume_compbrand1margarinetub
+                   
+                                      
+#compbrand2 wrapper
+                   
+                   + base_price_compbrand2_wrapper
+                   
+                   + tdp_compbrand2margarinewrapper
+                   
+                   + promosalesvolume_compbrand2margarinewrapper
+                               
+                   + as_net_compbrand2_wrapper_0_65
+                   
+                   + I(as_net_compbrand2_wrapper_0_65^2)
+                           
+                   + tv_grp_compbrand2margarinewrapper_0_65
+               
+                   + I(tv_grp_compbrand2margarinewrapper_0_65^2)
+                   
+                   
+#compbrand2 tub
+                   
+                   + base_price_compbrand2_tub
+                   
+                   + promosalesvolume_compbrand2margarinetub
+                   
+                   + as_mgz_compbrand2tub_0_4
+                   
+                   + I(as_mgz_compbrand2tub_0_4^2)
+                   
+                   + as_net_compbrand2tub_0_4
+                   
+                   + I(as_net_compbrand2tub_0_4^2)
+          
+                   + tv_grp_compbrand2margarinetub_0_65
+
+                   + I(tv_grp_compbrand2margarinetub_0_65^2)
+               
+
+# butter
+                   
+                   + base_price_butter
+                   
+                   + tdp_butter
+                   
+                   + promosalesvolume_butter
+                   
+
+                   
+                   , data = abc_corp_data_adstock
+                   
+                                     
+) 
+
+
+##### Numerical summary of the first regression model
+
+summary(model_fintub)
+
+
+##### Visual summary of the first regression model, looking for errors
+
+
+par(mfrow = c(2, 2))
+
+plot(resid(model_fintub), type = "l")
+
+hist(resid(model_fintub))
+
+plot(density(resid(model_fintub)))
+
+cooksd <- cooks.distance(model_fintub)
+
+plot(cooksd, pch="*", cex=2, main="Influential Obs by Cooks distance")  # plot cook's distance
+
+abline(h = 4*mean(cooksd, na.rm=T), col="red")  # add cutoff line
+
+text(x=1:length(cooksd)+1, y=cooksd, labels=ifelse(cooksd>4*mean(cooksd, na.rm=T),names(cooksd),""), col="red")  # add labels
+
+
+
+
+par(mfrow = c(2, 2))
+
+plot(model_fintub)
+
+p2 <- xyplot(abc_corp_data_adstock$salesvolume_brand1margarinetub + fitted(model_fintub) + resid(model_fintub)~ abc_corp_data_adstock$week_id, type = "l", lwd=2)
+
+update(p2, panel=function(...){
+  
+  panel.xyplot(...)
+  
+  panel.abline(h=0)
+  
+} )
+
+
+##### Checking for multicollinearity 
+
+car::vif(model_fintub)
+
+
+##### Plot the marginal effects
+ 
+marginal_effects_atmeans_tub <- summary(margins(model_fintub, atmeans = TRUE))
+
+
+ggplot(data = marginal_effects_atmeans) +
+  geom_point(aes(factor, AME)) +
+  geom_errorbar(aes(x = factor, ymin = lower, ymax = upper)) +
+  geom_hline(yintercept = 0) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45))
+
+
+marginal_effects <- summary(margins(model_fintub))
+
+ggplot(data = marginal_effects) +
+  geom_point(aes(factor, AME)) +
+  geom_errorbar(aes(x = factor, ymin = lower, ymax = upper)) +
+  geom_hline(yintercept = 0) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45))
+
+
+##### Plot the effects of the independent variables on the dependent variable
+
+effect_plot(model_fintub, pred = base_price_brand1_tub, interval = TRUE, partial.residuals = FALSE, plot.points = TRUE)+
+  geom_vline(xintercept = mean(abc_corp_data_adstock$base_price_brand1_tub))
+
+effect_plot(model_fintub, pred = tdp_brand1margarinetub, interval = TRUE, partial.residuals = FALSE, plot.points = TRUE)+
+  geom_vline(xintercept = mean(abc_corp_data_adstock$tdp_brand1margarinetub))
+
+effect_plot(model_fintub, pred = as_tv_brand1tub_0_7, interval = TRUE, partial.residuals = FALSE, plot.points = TRUE)+
+  geom_vline(xintercept = mean(abc_corp_data_adstock$as_tv_brand1tub_0_7))
+
+effect_plot(model_fintub, pred = as_net_brand1tub_0_8, interval = TRUE, partial.residuals = FALSE, plot.points = TRUE)+
+  geom_vline(xintercept = mean(abc_corp_data_adstock$as_net_brand1tub_0_8))
+
+effect_plot(model_fintub, pred = as_mgz_brand1tub_0_85, interval = TRUE, partial.residuals = FALSE, plot.points = TRUE)+
+  geom_vline(xintercept = mean(abc_corp_data_adstock$as_mgz_brand1tub_0_85))
+
+effect_plot(model_fintub, pred = tdp_brand1margarinewrapper, interval = TRUE, partial.residuals = FALSE, plot.points = TRUE)+
+  geom_vline(xintercept = mean(abc_corp_data_adstock$tdp_brand1margarinewrapper))
+
+effect_plot(model_fintub, pred = as_tv_brand1wrapper_0_35, interval = TRUE, partial.residuals = FALSE, plot.points = TRUE)+
+  geom_vline(xintercept = mean(abc_corp_data_adstock$as_tv_brand1wrapper_0_35))
+
+effect_plot(model_fintub, pred = as_tv_brand1wrapper_0_65, interval = TRUE, partial.residuals = FALSE, plot.points = TRUE)+
+  geom_vline(xintercept = mean(abc_corp_data_adstock$as_tv_brand1wrapper_0_65))
+
+#effect_plot(model_fintub, pred = as_brand1_wrapper_net_0_5, interval = TRUE, partial.residuals = FALSE, plot.points = TRUE)
+
+effect_plot(model_fintub, pred = as_brand1_wrapper_mgz_0_55, interval = TRUE, partial.residuals = FALSE, plot.points = TRUE)+
+  geom_vline(xintercept = mean(abc_corp_data_adstock$as_brand1_wrapper_mgz_0_55))
+
+effect_plot(model_fintub, pred = base_price_compbrand1_tub, interval = TRUE, partial.residuals = FALSE, plot.points = TRUE)+
+  geom_vline(xintercept = mean(abc_corp_data_adstock$base_price_compbrand1_tub))
+
+#effect_plot(model_fintub, pred = promosalesvolume_compbrand1margarinetub, interval = TRUE, partial.residuals = FALSE, plot.points = TRUE)
+
+effect_plot(model_fintub, pred = as_net_compbrand2_wrapper_0_65, interval = TRUE, partial.residuals = FALSE, plot.points = TRUE)+
+  geom_vline(xintercept = mean(abc_corp_data_adstock$as_net_compbrand2_wrapper_0_65))
+
+effect_plot(model_fintub, pred = as_mgz_compbrand2tub_0_4, interval = TRUE, partial.residuals = FALSE, plot.points = TRUE)+
+  geom_vline(xintercept = mean(abc_corp_data_adstock$as_mgz_compbrand2tub_0_4))
+
+effect_plot(model_fintub, pred = base_price_compbrand2_tub, interval = TRUE, partial.residuals = FALSE, plot.points = TRUE)+
+  geom_vline(xintercept = mean(abc_corp_data_adstock$base_price_compbrand2_tub))
+
+effect_plot(model_fintub, pred = tv_grp_compbrand2margarinewrapper_0_65, interval = TRUE, partial.residuals = FALSE, plot.points = TRUE)+
+  geom_vline(xintercept = mean(abc_corp_data_adstock$tv_grp_compbrand2margarinewrapper_0_65))
+
+effect_plot(model_fintub, pred = tv_grp_compbrand2margarinetub_0_65, interval = TRUE, partial.residuals = FALSE, plot.points = TRUE)+
+  geom_vline(xintercept = mean(abc_corp_data_adstock$tv_grp_compbrand2margarinetub_0_65))
+
+
+############################## First regressions ends here ##############################
+
+
+
+
+
+
+############################## Second regressions starts here ##############################
+
+
+
+model_finwrap <- lm(formula = salesvolume_brand1margarinewrapper ~ 
+                        
+#base
+                        xmas2
+                      
+                      + easter2
+
+                      +    week_id
+                      
+                      + kenyer_priceindex
+                      
+                      + liszt_priceindex
+                      
+                      
+#own price elasticity
+                      
+                      + base_price_brand1_wrapper
+
+#own distribution 
+                      
+                      +  tdp_brand1margarinewrapper
+                      
+#own media
+                      
+                      + as_tv_brand1wrapper_0_65
+                      
+                      + I(as_tv_brand1wrapper_0_65^2)
+                      
+                      + as_brand1_wrapper_net_0_5
+                      
+                      + I(as_brand1_wrapper_net_0_5^2)
+                           
+                      + rm_sessions
+                      
+                      + I(rm_sessions^2)
+                        
+                      + ns_sessions
+                 
+                      +I(ns_sessions^2)
+
+#cannibalization/sinergy
+                      
+                      + base_price_brand1_tub
+                      
+                      + tdp_brand1margarinetub
+                      
+                      + promosalesvolume_brand1margarinetub
+                      
+                      + as_tv_brand1tub_0_45
+                      
+                      + I(as_tv_brand1tub_0_45^2)
+                      
+                      + as_net_brand1tub_0_85
+                      
+                      + I(as_net_brand1tub_0_85^2)
+                      
+#competitors
+                      
+                      + base_price_compbrand1_tub
+                      
+                      + tdp_compbrand1margarinetub
+                      
+                      + promosalesvolume_compbrand1margarinetub
+
+                      
+
+                      + base_price_compbrand2_tub
+                      
+                      + tdp_compbrand2margarinetub
+                      
+                      + promosalesvolume_compbrand2margarinetub
+                     
+                      + tdp_compbrand2margarinewrapper
+                      
+                      + as_net_compbrand2_wrapper_0_65
+                      
+                      + I(as_net_compbrand2_wrapper_0_65^2)
+                 
+                      + tv_grp_compbrand2margarinewrapper_0_55
+                 
+                      + I(tv_grp_compbrand2margarinewrapper_0_55^2)
+                      
+                      + as_compbrand2_tub_0_8
+                      
+# butter
+                      
+                      + base_price_butter
+                      
+                      + tdp_butter
+                      
+                      + promosalesvolume_butter
+                      
+                      
+                      , data = abc_corp_data_adstock
+                      
+) 
+
+
+##### Numerical summary of the second regression model
+
+summary(model_finwrap)
+
+
+##### Visual summary of the second regression model, looking for errors
+
+
+
+par(mfrow = c(2, 2))
+
+
+plot(resid(model_finwrap), type = "l")
+
+hist(resid(model_finwrap))
+
+plot(density(resid(model_finwrap)))
+
+cooksd <- cooks.distance(model_finwrap)
+
+plot(cooksd, pch="*", cex=2, main="Influential Obs by Cooks distance")  # plot cook's distance
+
+abline(h = 4*mean(cooksd, na.rm=T), col="red")  # add cutoff line
+
+text(x=1:length(cooksd)+1, y=cooksd, labels=ifelse(cooksd>4*mean(cooksd, na.rm=T),names(cooksd),""), col="red")  # add labels
+
+
+
+par(mfrow = c(2, 2))
+
+plot(model_finwrap)
+
+p2 <- xyplot(abc_corp_data_adstock$salesvolume_brand1margarinewrapper_cap + fitted(model_finwrap) + resid(model_finwrap)~ abc_corp_data_adstock$week_id, type = "l", lwd=2)
+
+update(p2, panel=function(...){
+  
+  panel.xyplot(...)
+  
+  panel.abline(h=0)
+  
+} )
+
+
+##### Checking for multicollinearity 
+
+
+car::vif(model_finwrap)
+
+
+##### Plot the marginal effects
+
+marginal_effects_atmeans <- summary(margins(model_finwrap, atmeans = TRUE))
+
+
+
+
+ggplot(data = marginal_effects_atmeans) +
+  geom_point(aes(factor, AME)) +
+  geom_errorbar(aes(x = factor, ymin = lower, ymax = upper)) +
+  geom_hline(yintercept = 0) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45))
+
+
+
+marginal_effects <- summary(margins(model_finwrap))
+
+ggplot(data = marginal_effects) +
+  geom_point(aes(factor, AME)) +
+  geom_errorbar(aes(x = factor, ymin = lower, ymax = upper)) +
+  geom_hline(yintercept = 0) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45))
+
+
+##### Plot the effects of the independent variables on the dependent variable
+
+
+effect_plot(model_finwrap, pred = as_tv_brand1wrapper_0_65, interval = TRUE, partial.residuals = FALSE, plot.points = TRUE) +
+  geom_vline(xintercept = mean(abc_corp_data_adstock$as_tv_brand1wrapper_0_65))
+
+effect_plot(model_finwrap, pred = base_price_brand1_wrapper, interval = TRUE, partial.residuals = FALSE, plot.points = TRUE) +
+  geom_vline(xintercept = mean(abc_corp_data_adstock$base_price_brand1_wrapper))
+
+effect_plot(model_finwrap, pred = tdp_brand1margarinewrapper, interval = TRUE, partial.residuals = FALSE, plot.points = TRUE) +
+  geom_vline(xintercept = mean(abc_corp_data_adstock$tdp_brand1margarinewrapper))
+
+effect_plot(model_finwrap, pred = as_tv_brand1tub_0_45, interval = TRUE, partial.residuals = FALSE, plot.points = TRUE) +
+  geom_vline(xintercept = mean(abc_corp_data_adstock$as_tv_brand1tub_0_45))
+
+effect_plot(model_finwrap, pred = as_brand1_wrapper_net_0_5, interval = TRUE, partial.residuals = FALSE, plot.points = TRUE)+
+  geom_vline(xintercept = mean(abc_corp_data_adstock$as_brand1_wrapper_net_0_5))
+
+effect_plot(model_finwrap, pred = rm_sessions, interval = TRUE, partial.residuals = FALSE, plot.points = TRUE)+
+  geom_vline(xintercept = mean(abc_corp_data_adstock$rm_sessions))
+
+effect_plot(model_finwrap, pred = as_net_compbrand2_wrapper_0_65, interval = TRUE, partial.residuals = FALSE, plot.points = TRUE)+
+  geom_vline(xintercept = mean(abc_corp_data_adstock$as_net_compbrand2_wrapper_0_65))
+
+effect_plot(model_finwrap, pred = tv_grp_compbrand2margarinewrapper_0_55, interval = TRUE, partial.residuals = FALSE, plot.points = TRUE)+
+  geom_vline(xintercept = mean(abc_corp_data_adstock$tv_grp_compbrand2margarinewrapper_0_55))
+
+effect_plot(model_finwrap, pred = base_price_butter, interval = TRUE, partial.residuals = FALSE, plot.points = TRUE)+
+  geom_vline(xintercept = mean(abc_corp_data_adstock$base_price_butter))
+
+effect_plot(model_finwrap, pred = tdp_brand1margarinetub, interval = TRUE, partial.residuals = FALSE, plot.points = TRUE)+
+  geom_vline(xintercept = mean(abc_corp_data_adstock$tdp_brand1margarinetub))
+
+
+
+############################## Second regressions ends here ##############################
+
+
+
+
+
+
+
+
+
+########################################################################################################
+############################################# CODE ENDS HERE ###########################################
+########################################################################################################
+
+
+
+
+
